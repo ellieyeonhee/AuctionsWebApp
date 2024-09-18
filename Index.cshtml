@@ -1,0 +1,106 @@
+﻿@using WebMatrix.Data
+
+@{
+    ViewBag.Title = "Home";
+
+    var db = Database.Open("AuctionDB");
+
+    var catSql = "SELECT catalogueID, catName FROM Catalogues";
+    var catData = db.Query(catSql);
+
+
+    var sql = "SELECT C.catalogueID, C.catName, C.catPhotoUrl, C.catDesc, A.auctDateTime, L.lotNo FROM Catalogues AS C JOIN Auctions As A ON C.auctionID = A.auctionID JOIN Lots AS L ON C.catalogueID=L.catalogueID ORDER BY catalogueID ASC";
+    var dateSql = "SELECT auctionID, auctDateTime From Auctions";
+    var name = Request.Form[""];
+
+    var data = db.Query(sql);
+    var dateData = db.Query(dateSql);
+    // This is the starting page that should show a list of past + current auction catalogues
+    // selecting a catalogue should navigate to the catalogue page
+    // DB Stuff here to show list of Auction Catalogues
+}
+
+<div class="jumbotron py-1 mt-2">
+    <h2 class="text-center">Catalogues</h2>
+</div>
+
+<form action="/Home/Index" method="post">
+
+
+    <div class="row">
+        <div class="col-3">
+            <select name="cat" class="form-control">
+                <option value="">All Catalogues</option>
+                @foreach (var row in catData)
+                {
+                    <option value="@row.catalogueID">@row.catName</option>
+                }
+            </select>
+        </div>
+
+        <div class="col-3">
+            <select name="auctDate" class="form-control">
+                <option value="">All Dates</option>
+                @foreach (var row in dateData)
+                {
+                    <option value="@row.auctionID">@row.auctDateTime</option>
+                }
+            </select>
+        </div>
+
+        <div class="col-3">
+            <button type="submit" class="btn btn-secondary">Search</button>
+        </div>
+
+    </div>
+
+
+
+</form>
+
+@if (dateData != null)
+{
+    <div class="jumbotron pt-1  pb-1 mt-2">
+        <h2 class=" text-center">Past Auctions</h2>
+    </div>
+
+
+    <div class="row justify-content-center">
+        @foreach (var row in data)
+        {
+
+            <div class="card border-primary col-3 m-1">
+                <img class="card-img-top" src="@row.catPhotoUrl" alt="@row.catName image">
+                <div class="card-body">
+                    <h5 class="card-title">@row.catName</h5>
+                    <p class="card-text">@row.auctDateTime</p>
+                    <a href="/Home/Details?id=@row.lotNo" class="btn btn-primary">View Details</a>
+                </div>
+            </div>
+        }
+    </div>
+
+}
+
+else
+{
+
+    <div class="jumbotron pt-1 pb-1 mt-2">
+        <h2 class="text-center">Current and Futrue Auctions</h2>
+    </div>
+
+    <div class="row justify-content-center">
+        @foreach (var row in data)
+        {
+
+            <div class="card border-primary col-3 m-1">
+                <img class="card-img-top" src="@row.catPhotoUrl" alt="@row.catName image">
+                <div class="card-body">
+                    <h5 class="card-title">@row.catName</h5>
+                    <p class="card-text">@row.auctDateTime</p>
+                    <a href="/Home/Details?id=@row.lotNo" class="btn btn-primary"></a>
+                </div>
+            </div>
+        }
+    </div>
+}

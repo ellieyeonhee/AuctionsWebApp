@@ -1,0 +1,60 @@
+﻿@using WebMatrix.Data
+
+@{
+    ViewBag.Title = "Catalogue";
+    var db = Database.Open("AuctionDB");
+
+    var name = Request.Form["searchText"];
+
+    var sql = "SELECT * FROM Lots WHERE lotTitle LIKE CONCAT(@0, '%') ORDER BY lotTitle ASC";
+
+    var data = db.Query(name, sql);
+
+    // you can modify this to include the dynamic catalogue no.
+    // This page should list all the lots for a selected auction catalogue
+    // selecting a catalogue lot item should navigate to the Lot page
+    // DB Stuff here to show list of lots in selected auction catalogue
+}
+
+
+<div class="jumbotron py-1 mt-2">
+    <h2 class="text-center">Catalogue</h2>
+</div>
+
+<form action="/Home/Catalogue" method="post">
+    <div class="row mb-2">
+        <div class=" col-5">
+            <input type="text" class="form-control" name="searchText" placeholder="Lot title/description search" />
+
+        </div>
+        <div class="col-3">
+            <button type="submit" class="btn btn-secondary">Search</button>
+        </div>
+    </div>
+</form>
+
+@if (data.Count() > 0)
+{
+    <div class="row justify-content-center">
+        @foreach (var row in data)
+        {
+
+            <div class="card border-primary  col-3 m-1">
+                <img class="card-img-top" src="@row.imageUrl" alt="@row.lotTitle image">
+                <div class="card-body">
+                    <h5 class="card-title">@row.lotTitle</h5>
+                    <p class="card-text">@row.lotNo</p>
+                    <p class="card-text">@row.lotDescription</p>
+                    <p class="card-text">Range @row.minPrice.ToString("C")</p>
+                    <a href="/Home/Details?id=@row.lotNo" class="btn btn-primary"></a>
+                </div>
+            </div>
+        }
+    </div>
+
+
+}
+else
+{
+    <h2 class="text-danger text-black-50 center">No matching lots found</h2>
+}
