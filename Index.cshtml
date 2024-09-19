@@ -1,63 +1,139 @@
 @using WebMatrix.Data
 
 @{
-    ViewBag.Title = "Lot";
+    ViewBag.Title = "Home";
+
     var db = Database.Open("AuctionDB");
 
-    var lotNo = Request.QueryString["id"];
-    var catID = Request.QueryString["catId"];
+    var catSql = "SELECT DISTINCT catName FROM Catalogues ORDER BY catName";
+    var catData = db.Query(catSql);
 
-    var lotDetailSql = "SELECT * FROM Lots WHERE Lots.catalogueID = @0 AND Lots.lotNo = @1";
+    var sql = "SELECT C.catalogueID, C.catName, C.catPhotoUrl, C.catDesc, A.auctDateTime, L.lotNo FROM Catalogues AS C JOIN Auctions As A ON C.auctionID = A.auctionID JOIN Lots AS L ON C.catalogueID=L.catalogueID ORDER BY catalogueID ASC";
+    var dateSql = "SELECT auctionID, auctDateTime From Auctions ORDER BY auctDateTime";
 
-    var lotData = db.QuerySingle(lotDetailSql, catID, lotNo);
+    var data = db.Query(sql);
+    var dateData = db.Query(dateSql);
 
-    var imageSql = "SELECT * " +
-              "FROM LotImages " +
-              "WHERE LotImages.catalogueID = @0 AND  LotImages.lotNo = @1";
+    var catName = Request.Form["cat"];
+    var catalogues = "SELECT catName, auctDateTime, catPhotoUrl, calc.LotCount, C.catalogueID " +
+        "FROM Catalogues AS C JOIN Auctions As A " +
+        "ON C.auctionID = A.auctionID " +
+        "JOIN ( " +
+        "SELECT catalogueID, COUNT(*) AS LotCount " +
+        "FROM Lots GROUP BY catalogueID) AS calc " +
+        "ON C.catalogueID = calc.catalogueID " +
+        "AND catName LIKE CONCAT(@0, '%')";
 
-    var imageData = db.Query(imageSql, catID, lotNo);
+    var catalogueListings = db.Query(catalogues, catName);
+    // This is the starting page that should show a list of past + current auction catalogues
+    // selecting a catalogue should navigate to the catalogue page
+    // DB Stuff here to show list of Auction Catalogues
+}
+
+@functions{
+    string IsSelected(string val)
+    {
+        string s = null;
+        if (Request.Form["cat"] == val) { s = "selected"; }
+        return s;
+    }
 }
 
 <div class="jumbotron py-1 mt-2">
-    <h2 class="text-center">Lot</h2>
+    <h2 class="text-center">Catalogues</h2>
 </div>
 
-<form action="/Home/Lot" method="post">
-    @if (lotData != null)
-    {
-        <div class="row justify-content-center">
+<form action="/Home/Index" method="post">
 
-            <div class="col-10 m-1">
-                <div class="card">
-                    
-                    <div class="card-body">
-                        <h5 class="card-title">Lot @lotData.lotNo</h5>
-                        <p class="card-text">@lotData.lotTitle</p>
-                        <p class="card-text">Range @lotData.minPrice.ToString("C") - @lotData.maxPrice.ToString("C")</p>
-                        <p class="card-text"> @lotData.lotDescription</p>
-                        @if (lotData.salePrice != null)
-                        {
-                            
-                            <p class="text-danger">Status: Sold @lotData.salePrice.ToString("C")</p>
-                        }
-
-                        else
-                        {
-                            <p class="text-warning">Status: Unsold</p>
-                        }
-                        <a href="/Home/Catalogue?id=@catID" class="btn btn-primary">Go Back</a>
-
-                    </div>
-
-                    <div class="col">
-                        @foreach (var row in imageData)
-                        {
-                            <img src="@row.imageUrl" style="width: 315px; height: auto;" />
-                        }
-                    </div>
-                </div>
-            </div>
+    <div class="row">
+        <div class="col-3">
+            <select name="cat" class="form-control">
+                <option value="" @IsSelected("")>All Catalogues</option>
+                @foreach (var row in catData)
+                {
+                    <option value="@row.catName" @IsSelected(@row.catName)>@row.catName</option>
+                }
+            </select>
         </div>
-    }
-</form>
 
+        <div class="col-3">
+            <select name="auctDate" class="form-control">
+                <option value="">All Dates</option>
+                @foreach (var row in dateData)
+                {
+                    <option value="@row.auctDateTime">@row.auctDateTime.ToString("d")</option>
+                }
+            </select>
+        </div>
+
+        <div class="col-3">
+            <button type="submit" class="btn btn-secondary" title="search existing items">Search</button>
+        </div>
+
+    </div>
+    <div class="jumbotron py-1 mt-2">
+        <h2 class="text-center">Current and Future Auctions</h2>
+    </div>
+
+    <div class="row form-group">
+        <div class="col">
+            @if (catalogueListings.Count() > 0)
+            {
+                <div class="row justify-content-center">
+                    @foreach (var row in catalogueListings)
+                    {
+                        if (row.auctDateTime >= System.DateTime.Now)
+                        {
+                            <div class="card border-primary col-3 m-1">
+                                <img class="card-img-top" src="@row.catPhotoUrl" alt="@row.catName image">
+                                <div class="card-body">
+                                    <h5 class="card-title">@row.catName</h5>
+                                    <p class="card-text">@row.auctDateTime</p>
+                                    <p class="card-text">@row.LotCount Lots</p>
+                                    <a href="/Home/Catalogue?id=@row.catalogueID" class="btn btn-primary">View Details</a>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            }
+            else
+            {
+                <h2 class="text-danger">Ooops... No matching records were returned!</h2>
+            }
+        </div>
+    </div>
+
+    <div class="jumbotron py-1 mt-2">
+        <h2 class="text-center">Past Auctions</h2>
+    </div>
+
+    <div class="row form-group">
+        <div class="col">
+            @if (catalogueListings.Count() > 0)
+            {
+                <div class="row justify-content-center">
+                    @foreach (var row in catalogueListings)
+                    {
+                        if (row.auctDateTime < System.DateTime.Now)
+                        {
+                            <div class="card border-primary col-3 m-1">
+                                <img class="card-img-top" src="@row.catPhotoUrl" alt="@row.catName image">
+                                <div class="card-body">
+                                    <h5 class="card-title">@row.catName</h5>
+                                    <p class="card-text">@row.auctDateTime</p>
+                                    <p class="card-text">@row.LotCount Lots</p>
+                                    <a href="/Home/Catalogue?id=@row.catalogueID" class="btn btn-primary">View Details</a>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            }
+            else
+            {
+                <h2 class="text-danger">Ooops... No matching records were returned!</h2>
+            }
+        </div>
+    </div>
+</form>
