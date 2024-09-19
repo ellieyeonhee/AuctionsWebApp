@@ -1,41 +1,63 @@
-﻿@using WebMatrix.Data
+@using WebMatrix.Data
 
 @{
+    ViewBag.Title = "Lot";
     var db = Database.Open("AuctionDB");
 
-    var sql = "";
+    var lotNo = Request.QueryString["id"];
+    var catID = Request.QueryString["catId"];
 
-    var data db.QuerySingle(sql);
+    var lotDetailSql = "SELECT * FROM Lots WHERE Lots.catalogueID = @0 AND Lots.lotNo = @1";
 
-    ViewBag.Title = "Lot";  // you can modify this to include the dynamic lot no.
-                            // This page should show the selected lot item
-                            // DB Stuff here to show selected item in detail
+    var lotData = db.QuerySingle(lotDetailSql, catID, lotNo);
+
+    var imageSql = "SELECT * " +
+              "FROM LotImages " +
+              "WHERE LotImages.catalogueID = @0 AND  LotImages.lotNo = @1";
+
+    var imageData = db.Query(imageSql, catID, lotNo);
 }
 
 <div class="jumbotron py-1 mt-2">
     <h2 class="text-center">Lot</h2>
 </div>
 
-@if (data != null)
-{
-    <div class="row justify-content-center">
+<form action="/Home/Lot" method="post">
+    @if (lotData != null)
+    {
+        <div class="row justify-content-center">
 
-        <div class="col-10 m-1">
-            <div class="card">
-                <img class="card-img-top" src="@data.itemImage" alt="@data.itemName image">
-                <div class="card-body">
-                    <h5 class="card-title">@data.lotNo</h5>
-                    <p class="card-text">@data.lotTitle</p>
-                    <p class="card-text">Range @data.minPrice - @data.maxPrice.ToString("C")</p>
-                    <p class="card-text"> @data.lotDescription</p>
+            <div class="col-10 m-1">
+                <div class="card">
+                    
+                    <div class="card-body">
+                        <h5 class="card-title">Lot @lotData.lotNo</h5>
+                        <p class="card-text">@lotData.lotTitle</p>
+                        <p class="card-text">Range @lotData.minPrice.ToString("C") - @lotData.maxPrice.ToString("C")</p>
+                        <p class="card-text"> @lotData.lotDescription</p>
+                        @if (lotData.salePrice != null)
+                        {
+                            
+                            <p class="text-danger">Status: Sold @lotData.salePrice.ToString("C")</p>
+                        }
 
+                        else
+                        {
+                            <p class="text-warning">Status: Unsold</p>
+                        }
+                        <a href="/Home/Catalogue?id=@catID" class="btn btn-primary">Go Back</a>
 
+                    </div>
 
-                    <form action="/Home/Details?lot=@lotNo" method="post">
-                        <input type="submit" class="btn btn-success" value="See Reviews" />
-                    </form>
+                    <div class="col">
+                        @foreach (var row in imageData)
+                        {
+                            <img src="@row.imageUrl" style="width: 315px; height: auto;" />
+                        }
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-}
+    }
+</form>
+
