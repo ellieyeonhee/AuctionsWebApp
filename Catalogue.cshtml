@@ -1,27 +1,38 @@
-﻿@using WebMatrix.Data
+@using WebMatrix.Data
 
 @{
     ViewBag.Title = "Catalogue";
     var db = Database.Open("AuctionDB");
 
-    var name = Request.Form["searchText"];
+    var id = Request.QueryString["id"];
 
-    var sql = "SELECT * FROM Lots WHERE lotTitle LIKE CONCAT(@0, '%') ORDER BY lotTitle ASC";
+    var sql = "SELECT * " +
+              "FROM Lots AS L " +
+              "JOIN LotImages AS LI " +
+              "ON L.catalogueID = LI.catalogueID AND L.lotNo = LI.lotNo " +
+              "WHERE L.catalogueID = @0 AND " +
+              "(L.lotTitle LIKE CONCAT('%', @1, '%') OR L.lotDescription LIKE CONCAT('%', @1, '%')) " +
+              "ORDER BY L.catalogueID, L.lotNo ";
 
-    var data = db.Query(name, sql);
+    var lotSearch = Request.Form["searchLot"];
+
+    var data = db.Query(sql, id, lotSearch);
+
+    var previousLotNo = 0;
+    var currentLotNo = 0;
+    var shown = false;
 
 }
-
 
 <div class="jumbotron py-1 mt-2">
     <h2 class="text-center">Catalogue</h2>
 </div>
 
-<form action="/Home/Catalogue" method="post">
-    <div class="row mb-2">
-        <div class=" col-5">
-            <input type="text" class="form-control" name="searchText" placeholder="Lot title/description search" />
 
+<form action="/Home/Catalogue?id=@id" method="post">
+    <div class="row mb-3">
+        <div class="col-3">
+            <input type="text" class="form-control" name="searchLot" placeholder="Lot Title" value="@lotSearch">
         </div>
         <div class="col-3">
             <button type="submit" class="btn btn-secondary">Search</button>
@@ -29,28 +40,33 @@
     </div>
 </form>
 
-@if (data.Count() > 0)
-{
-    <div class="row justify-content-center">
-        @foreach (var row in data)
-        {
+<div class="row">
 
+    @foreach (var row in data)
+    {
+        currentLotNo = row.lotNo;
+        if (currentLotNo != previousLotNo)
+        {
+            shown = false;
+        }
+        if (!shown)
+        {
             <div class="card border-primary  col-3 m-1">
                 <img class="card-img-top" src="@row.imageUrl" alt="@row.lotTitle image">
                 <div class="card-body">
                     <h5 class="card-title">@row.lotTitle</h5>
-                    <p class="card-text">@row.lotNo</p>
+                    <p class="card-text">Lot @row.lotNo</p>
                     <p class="card-text">@row.lotDescription</p>
-                    <p class="card-text">Range @row.minPrice.ToString("C")</p>
-                    <a href="/Home/Details?id=@row.lotNo" class="btn btn-primary"></a>
+                    <p class="card-text">Range: @row.minPrice.ToString("C") - @row.maxPrice.ToString("C")</p>
+                    <a href="/Home/Lot?id=@row.lotNo&&catId=@row.catalogueID" class="btn btn-primary">Details</a>
                 </div>
             </div>
+            shown = true;
+            previousLotNo = @row.lotNo;
         }
-    </div>
+    }
+
+</div>
 
 
-}
-else
-{
-    <h2 class="text-danger text-black-50 center">No matching lots found</h2>
-}
+
